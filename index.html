@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>JARVIS</title>
+<script src="https://js.puter.com/v2/"></script>
+<style>
+  :root {
+    --cyan: #00e5ff;
+    --amber: #ffa000;
+    --green: #00ff9c;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    background: radial-gradient(circle at center, #0a0e17 0%, #050710 100%);
+    font-family: 'Consolas', 'Courier New', monospace;
+    overflow: hidden;
+    color: white;
+    user-select: none;
+  }
+  #app {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    height: 100%; gap: 18px;
+  }
+  #reactor-wrap { position: relative; width: 320px; height: 320px; }
+  svg { position: absolute; top: 0; left: 0; }
+  #core {
+    transform-origin: 160px 160px;
+    transition: filter 0.3s ease;
+    filter: drop-shadow(0 0 20px var(--cyan));
+  }
+  #segRing { transform-origin: 160px 160px; animation: spin 12s linear infinite; }
+  #midRing { transform-origin: 160px 160px; animation: spinRev 8s linear infinite; }
+  @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  @keyframes spinRev { from { transform: rotate(360deg); } to { transform: rotate(0deg); } }
+
+  #status { font-size: 14px; font-weight: bold; letter-spacing: 3px; color: var(--cyan); text-align: center; }
+  #panel {
+    width: 420px; max-width: 90vw;
+    background: rgba(26, 26, 46, 0.4);
+    border: 1px solid rgba(0, 229, 255, 0.25);
+    border-radius: 8px;
+    padding: 14px 16px;
+    min-height: 70px;
+  }
+  #heard { color: rgba(0, 229, 255, 0.7); font-size: 12px; }
+  #reply { color: white; font-size: 13px; margin-top: 8px; line-height: 1.5; }
+  #startBtn {
+    background: rgba(0, 229, 255, 0.15);
+    border: 1px solid var(--cyan);
+    color: var(--cyan);
+    padding: 10px 24px;
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 13px;
+    letter-spacing: 2px;
+    cursor: pointer;
+  }
+  #startBtn:hover { background: rgba(0, 229, 255, 0.3); }
+  #credit { font-size: 10px; color: rgba(0, 229, 255, 0.4); margin-top: 4px; }
+  #signin { font-size: 11px; color: rgba(0,229,255,0.5); text-align: center; max-width: 380px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="reactor-wrap">
+    <svg id="segRing" width="320" height="320" viewBox="0 0 320 320">
+      <circle cx="160" cy="160" r="120" fill="none" stroke="rgba(0,229,255,0.55)" stroke-width="3" stroke-dasharray="8 6"/>
+    </svg>
+    <svg id="midRing" width="320" height="320" viewBox="0 0 320 320">
+      <circle cx="160" cy="160" r="95" fill="none" stroke="rgba(0,229,255,0.65)" stroke-width="2" stroke-dasharray="2 4"/>
+    </svg>
+    <svg width="320" height="320" viewBox="0 0 320 320">
+      <circle cx="160" cy="160" r="150" fill="none" stroke="rgba(0,229,255,0.15)" stroke-width="1.5"/>
+    </svg>
+    <svg id="core" width="320" height="320" viewBox="0 0 320 320">
+      <defs>
+        <radialGradient id="coreGrad" cx="50%" cy="50%" r="50%">
+          <stop id="coreInner" offset="0%" stop-color="#ffffff"/>
+          <stop id="coreMid" offset="50%" stop-color="#00e5ff"/>
+          <stop offset="100%" stop-color="rgba(0,229,255,0)"/>
+        </radialGradient>
+      </defs>
+      <circle cx="160" cy="160" r="45" fill="url(#coreGrad)"/>
+    </svg>
+  </div>
+
+  <div id="status">IDLE</div>
+
+  <button id="startBtn">▶ START JARVIS</button>
+
+  <div id="panel" style="display:none">
+    <div id="heard">Say "Jarvis" followed by your command...</div>
+    <div id="reply"></div>
+  </div>
+
+  <div id="signin">First use: Puter.js will ask you to sign in (free, no card) so it can run the AI model on your behalf at no cost to you.</div>
+  <div id="credit">Made by Dheera Jayachitra &amp; Claude</div>
+</div>
+
+<script>
+const core = document.getElementById('core');
+const coreMid = document.getElementById('coreMid');
+const statusEl = document.getElementById('status');
+const heardEl = document.getElementById('heard');
+const replyEl = document.getElementById('reply');
+const panel = document.getElementById('panel');
+const startBtn = document.getElementById('startBtn');
+
+const COLORS = { idle: '#00e5ff', listening: '#00e5ff', thinking: '#ffa000', speaking: '#00ff9c' };
+
+let phase = 0;
+let targetLevel = 0, currentLevel = 0;
+function animate() {
+  phase += 0.05;
+  currentLevel += (targetLevel - currentLevel) * 0.15;
+  const breathing = 0.08 * Math.sin(phase);
+  const scale = 1 + breathing + currentLevel * 0.35;
+  core.style.transform = `scale(${scale})`;
+  targetLevel *= 0.98;
+  requestAnimationFrame(animate);
+}
+animate();
+
+function setState(state) {
+  statusEl.textContent = state.toUpperCase();
+  coreMid.setAttribute('stop-color', COLORS[state] || COLORS.idle);
+  core.style.filter = `drop-shadow(0 0 20px ${COLORS[state] || COLORS.idle})`;
+  if (state === 'thinking') targetLevel = Math.max(targetLevel, 0.35);
+}
+
+// ---------- Voice (Web Speech API, built into Chrome/Edge, zero install) ----------
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition = null;
+let pendingSend = null; // { query, message } awaiting spoken confirmation
+
+function speak(text) {
+  setState('speaking');
+  replyEl.textContent = `Jarvis: ${text}`;
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.rate = 1.02;
+  utter.onend = () => setState('listening');
+  utter.onboundary = () => { targetLevel = 0.5 + Math.random() * 0.3; };
+  speechSynthesis.speak(utter);
+}
+
+async function respond(text) { speak(text); }
+
+function isAffirmative(t) { t = t.toLowerCase(); return t.includes('send it') || t.includes('yes') || t.includes('confirm') || t.includes('do it'); }
+function isNegative(t) { t = t.toLowerCase(); return t.includes('cancel') || t.includes('no') || t.includes('stop') || t.includes("don't"); }
+function isMarketplaceRequest(t) {
+  t = t.toLowerCase();
+  return t.includes('marketplace') && (t.includes('find') || t.includes('look for') || t.includes('search') || t.includes('get me'));
+}
+
+async function handleCommand(command) {
+  heardEl.textContent = `You: ${command}`;
+
+  if (pendingSend) {
+    if (isAffirmative(command)) {
+      const draft = pendingSend; pendingSend = null;
+      respond(`Here's the tab — paste this to the seller: "${draft.message}". I can't click send myself from a webpage, Facebook blocks that, but it's ready for you to fire off.`);
+      window.open(`https://www.facebook.com/marketplace/search/?query=${encodeURIComponent(draft.query)}`, '_blank');
+      return;
+    }
+    if (isNegative(command)) { pendingSend = null; respond("Cancelled."); return; }
+    respond('Say "Jarvis, send it" to confirm, or "Jarvis, cancel".');
+    return;
+  }
+
+  if (isMarketplaceRequest(command)) {
+    setState('thinking');
+    const query = command
+      .replace(/find me( the best)?( a| an)?( 2nd hand| second hand| used)?/gi, '')
+      .replace(/on facebook marketplace|on marketplace/gi, '')
+      .replace(/and send an? enquiry.*/i, '')
+      .trim();
+    try {
+      const message = await puter.ai.chat(
+        `Draft a short, casual 2-3 sentence enquiry message to a Facebook Marketplace seller about a ` +
+        `secondhand "${query}". Ask if it's still available. Sound like a normal person texting, no bot fluff.`
+      );
+      pendingSend = { query, message: String(message) };
+      respond(`I can't browse Facebook myself from here — that needs your real login and browsers block sites from controlling each other. But I've drafted a message: "${message}" Say "Jarvis, send it" and I'll open Marketplace search for "${query}" with that ready to paste, or "cancel".`);
+    } catch (e) {
+      respond(`Couldn't draft that: ${e.message || e}`);
+    }
+    return;
+  }
+
+  setState('thinking');
+  try {
+    const reply = await puter.ai.chat(command);
+    respond(String(reply));
+  } catch (e) {
+    respond(`Sorry, I couldn't reach the AI model. ${e.message || e}`);
+  }
+}
+
+function startListening() {
+  if (!SpeechRecognition) {
+    heardEl.textContent = '⚠ Your browser doesn\'t support speech recognition. Use Chrome or Edge.';
+    return;
+  }
+  recognition = new SpeechRecognition();
+  recognition.continuous = true;
+  recognition.interimResults = false;
+  recognition.lang = 'en-US';
+
+  recognition.onresult = (event) => {
+    const last = event.results[event.results.length - 1];
+    const text = last[0].transcript.trim();
+    const lower = text.toLowerCase();
+    const idx = lower.indexOf('jarvis');
+    if (idx === -1) return;
+    const command = text.slice(idx + 6).replace(/^[,.\s-]+/, '').trim();
+    if (command.length === 0) return;
+    handleCommand(command);
+  };
+
+  recognition.onerror = (e) => {
+    if (e.error === 'not-allowed') heardEl.textContent = '⚠ Microphone permission denied.';
+  };
+
+  recognition.onend = () => { if (recognition) recognition.start(); }; // auto-restart, browsers stop it periodically
+
+  recognition.start();
+  setState('listening');
+  panel.style.display = 'block';
+  heardEl.textContent = 'Say "Jarvis" followed by your command...';
+}
+
+startBtn.addEventListener('click', () => {
+  startBtn.style.display = 'none';
+  startListening();
+  // Warm up TTS voices list in some browsers
+  speechSynthesis.getVoices();
+});
+</script>
+</body>
+</html>
