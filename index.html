@@ -198,14 +198,22 @@ async function handleCommand(command) {
   }
 }
 
+let recognitionStopped = false;
+
 function startListening() {
   if (!SpeechRecognition) {
     heardEl.textContent = '⚠ Your browser doesn\'t support speech recognition. Use Chrome or Edge.';
     return;
   }
+  if (!window.isSecureContext) {
+    heardEl.textContent = '⚠ Voice input needs HTTPS (or localhost). This page is loaded insecurely.';
+    return;
+  }
+
+  recognitionStopped = false;
   recognition = new SpeechRecognition();
   recognition.continuous = true;
-  recognition.interimResults = false;
+  recognition.interimResults = true;
   recognition.lang = 'en-US';
 
   recognition.onresult = (event) => {
@@ -213,17 +221,39 @@ function startListening() {
     const text = last[0].transcript.trim();
     const lower = text.toLowerCase();
     const idx = lower.indexOf('jarvis');
-    if (idx === -1) return;
+
+    if (!last.isFinal) {
+      // Show live transcript so it's obvious the mic is actually picking things up.
+      heardEl.textContent = idx === -1 ? `(listening) ${text}` : `You: ${text}`;
+      return;
+    }
+
+    if (idx === -1) {
+      heardEl.textContent = `Heard: "${text}" — say "Jarvis" first so I know that's for me.`;
+      return;
+    }
     const command = text.slice(idx + 6).replace(/^[,.\s-]+/, '').trim();
     if (command.length === 0) return;
     handleCommand(command);
   };
 
   recognition.onerror = (e) => {
-    if (e.error === 'not-allowed') heardEl.textContent = '⚠ Microphone permission denied.';
+    if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+      heardEl.textContent = '⚠ Microphone permission denied. Allow mic access in the browser/site settings and reload.';
+      recognitionStopped = true;
+    } else if (e.error === 'audio-capture') {
+      heardEl.textContent = '⚠ No microphone found.';
+      recognitionStopped = true;
+    } else if (e.error === 'no-speech') {
+      // Harmless, browser just timed out waiting for speech — let onend restart it.
+    } else {
+      heardEl.textContent = `⚠ Speech recognition error: ${e.error}`;
+    }
   };
 
-  recognition.onend = () => { if (recognition) recognition.start(); }; // auto-restart, browsers stop it periodically
+  recognition.onend = () => {
+    if (recognition && !recognitionStopped) recognition.start(); // auto-restart, browsers stop it periodically
+  };
 
   recognition.start();
   setState('listening');
