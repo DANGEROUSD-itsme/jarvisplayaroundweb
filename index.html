@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>JARVIS</title>
-<script src="https://js.puter.com/v2/"></script>
+<script src="https://js.puter.com/v2/" onerror="window.__puterLoadFailed = true;"></script>
 <style>
   :root {
     --cyan: #00e5ff;
@@ -154,8 +154,21 @@ function isMarketplaceRequest(t) {
   return t.includes('marketplace') && (t.includes('find') || t.includes('look for') || t.includes('search') || t.includes('get me'));
 }
 
+function puterAvailable() {
+  return typeof puter !== 'undefined' && puter && puter.ai && typeof puter.ai.chat === 'function';
+}
+
 async function handleCommand(command) {
   heardEl.textContent = `You: ${command}`;
+
+  if (!puterAvailable()) {
+    respond(
+      window.__puterLoadFailed
+        ? "Puter.js failed to load from js.puter.com — check your internet connection, or an ad blocker / content blocker / browser extension may be blocking it. Disable it for this page and reload."
+        : "Puter.js isn't ready yet — give it a second after the page loads, or reload if this keeps happening."
+    );
+    return;
+  }
 
   if (pendingSend) {
     if (isAffirmative(command)) {
@@ -266,6 +279,12 @@ startBtn.addEventListener('click', () => {
   startListening();
   // Warm up TTS voices list in some browsers
   speechSynthesis.getVoices();
+
+  if (!puterAvailable()) {
+    replyEl.textContent = window.__puterLoadFailed
+      ? '⚠ Puter.js failed to load (js.puter.com blocked or unreachable). Voice will listen, but AI replies won\'t work until this loads — check for an ad blocker.'
+      : '⚠ Puter.js hasn\'t finished loading yet. Wait a moment before speaking a command.';
+  }
 });
 </script>
 </body>
