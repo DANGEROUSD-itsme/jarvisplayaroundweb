@@ -60,6 +60,18 @@
   #startBtn:hover { background: rgba(0, 229, 255, 0.3); }
   #credit { font-size: 10px; color: rgba(0, 229, 255, 0.4); margin-top: 4px; }
   #signin { font-size: 11px; color: rgba(0,229,255,0.5); text-align: center; max-width: 380px; }
+  #signinBtn {
+    background: rgba(0, 229, 255, 0.1);
+    border: 1px solid rgba(0, 229, 255, 0.5);
+    color: var(--cyan);
+    padding: 8px 18px;
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 12px;
+    letter-spacing: 1px;
+    cursor: pointer;
+  }
+  #signinBtn:hover { background: rgba(0, 229, 255, 0.25); }
 </style>
 </head>
 <body>
@@ -96,6 +108,7 @@
   </div>
 
   <div id="signin">First use: Puter.js will ask you to sign in (free, no card) so it can run the AI model on your behalf at no cost to you.</div>
+  <button id="signinBtn" style="display:none">SIGN IN TO PUTER</button>
   <div id="credit">Made by Dheera Jayachitra &amp; Claude</div>
 </div>
 
@@ -107,6 +120,8 @@ const heardEl = document.getElementById('heard');
 const replyEl = document.getElementById('reply');
 const panel = document.getElementById('panel');
 const startBtn = document.getElementById('startBtn');
+const signinBtn = document.getElementById('signinBtn');
+const signinEl = document.getElementById('signin');
 
 const COLORS = { idle: '#00e5ff', listening: '#00e5ff', thinking: '#ffa000', speaking: '#00ff9c' };
 
@@ -158,6 +173,40 @@ function puterAvailable() {
   return typeof puter !== 'undefined' && puter && puter.ai && typeof puter.ai.chat === 'function';
 }
 
+function updateSigninUI() {
+  if (!puterAvailable()) {
+    signinBtn.style.display = 'none';
+    return;
+  }
+  const signedIn = puter.auth && typeof puter.auth.isSignedIn === 'function' && puter.auth.isSignedIn();
+  signinBtn.style.display = signedIn ? 'none' : 'inline-block';
+  signinEl.style.display = signedIn ? 'none' : 'block';
+}
+
+signinBtn.addEventListener('click', async () => {
+  if (!puterAvailable() || !puter.auth || typeof puter.auth.signIn !== 'function') {
+    replyEl.textContent = "⚠ Puter.js isn't loaded, so sign-in isn't available yet. Reload the page.";
+    return;
+  }
+  try {
+    await puter.auth.signIn();
+    updateSigninUI();
+    replyEl.textContent = 'Signed in to Puter. Try a command again.';
+  } catch (e) {
+    replyEl.textContent = `Sign-in was cancelled or failed: ${e.message || e}`;
+  }
+});
+
+function describePuterError(e) {
+  const msg = (e && (e.message || e.error || e.toString())) || String(e);
+  if (/auth|sign.?in|unauthorized|401/i.test(msg)) {
+    updateSigninUI();
+    signinBtn.style.display = 'inline-block';
+    return `Looks like you're signed out of Puter. Click "SIGN IN TO PUTER" and try again. (${msg})`;
+  }
+  return msg;
+}
+
 async function handleCommand(command) {
   heardEl.textContent = `You: ${command}`;
 
@@ -197,7 +246,7 @@ async function handleCommand(command) {
       pendingSend = { query, message: String(message) };
       respond(`I can't browse Facebook myself from here — that needs your real login and browsers block sites from controlling each other. But I've drafted a message: "${message}" Say "Jarvis, send it" and I'll open Marketplace search for "${query}" with that ready to paste, or "cancel".`);
     } catch (e) {
-      respond(`Couldn't draft that: ${e.message || e}`);
+      respond(`Couldn't draft that: ${describePuterError(e)}`);
     }
     return;
   }
@@ -207,7 +256,7 @@ async function handleCommand(command) {
     const reply = await puter.ai.chat(command);
     respond(String(reply));
   } catch (e) {
-    respond(`Sorry, I couldn't reach the AI model. ${e.message || e}`);
+    respond(`Sorry, I couldn't reach the AI model. ${describePuterError(e)}`);
   }
 }
 
@@ -285,7 +334,18 @@ startBtn.addEventListener('click', () => {
       ? '⚠ Puter.js failed to load (js.puter.com blocked or unreachable). Voice will listen, but AI replies won\'t work until this loads — check for an ad blocker.'
       : '⚠ Puter.js hasn\'t finished loading yet. Wait a moment before speaking a command.';
   }
+  updateSigninUI();
 });
+
+// Puter.js loads async — keep checking until it's ready, then reflect real sign-in state.
+let puterCheckAttempts = 0;
+const puterCheckInterval = setInterval(() => {
+  puterCheckAttempts++;
+  if (puterAvailable() || puterCheckAttempts > 100) {
+    updateSigninUI();
+    clearInterval(puterCheckInterval);
+  }
+}, 200);
 </script>
 </body>
 </html>
