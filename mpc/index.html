@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<title>B4SS4EV4R MPC — Freestyle Sampler</title>
+<style>
+  :root{
+    --bg:#0b0c0f;
+    --panel:#15171c;
+    --panel2:#1c1f26;
+    --edge:#2a2e37;
+    --text:#e9edf3;
+    --dim:#8892a0;
+    --accent:#ff5d3b;
+    --accent2:#33e6b5;
+    --vocals:#ff5d3b;
+    --drums:#ffcf3f;
+    --bass:#33e6b5;
+    --other:#7c9bff;
+    font-size:16px;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0;padding:0;background:radial-gradient(circle at 50% -10%, #1a1d24 0%, #0b0c0f 55%);
+    color:var(--text);font-family:'Segoe UI',system-ui,-apple-system,Roboto,sans-serif;
+    min-height:100vh;
+    -webkit-tap-highlight-color:transparent;
+    user-select:none;
+    overflow-x:hidden;
+  }
+  .wrap{max-width:960px;margin:0 auto;padding:18px 14px 60px;}
+
+  header{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:14px;}
+  .brand{display:flex;flex-direction:column;}
+  .brand .title{font-size:1.5rem;font-weight:800;letter-spacing:.5px;
+    background:linear-gradient(90deg,var(--accent),var(--bass));
+    -webkit-background-clip:text;background-clip:text;color:transparent;}
+  .brand .sub{font-size:.72rem;color:var(--dim);letter-spacing:1.5px;text-transform:uppercase;}
+  .badge{font-size:.65rem;color:var(--dim);border:1px solid var(--edge);padding:4px 8px;border-radius:20px;}
+
+  .machine{
+    background:linear-gradient(180deg,var(--panel2),var(--panel));
+    border:1px solid var(--edge);
+    border-radius:18px;
+    padding:16px;
+    box-shadow:0 20px 50px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.03);
+  }
+
+  /* Transport */
+  .transport{
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+    background:#0e0f13;border:1px solid var(--edge);border-radius:12px;
+    padding:10px 12px;margin-bottom:14px;
+  }
+  button{font-family:inherit;cursor:pointer;}
+  .tbtn{
+    background:var(--panel2);color:var(--text);border:1px solid var(--edge);
+    border-radius:8px;padding:8px 14px;font-size:.85rem;font-weight:600;
+    display:flex;align-items:center;gap:6px;transition:.12s;
+  }
+  .tbtn:hover{border-color:#454b57;}
+  .tbtn.on{background:var(--accent);color:#180a05;border-color:var(--accent);}
+  .tbtn:active{transform:scale(.96);}
+
+  .timeline{
+    flex:1;min-width:160px;height:34px;background:#000;border-radius:8px;
+    position:relative;overflow:hidden;border:1px solid var(--edge);cursor:pointer;
+  }
+  .timeline canvas{width:100%;height:100%;display:block;}
+  .playhead{position:absolute;top:0;bottom:0;width:2px;background:var(--accent2);
+    box-shadow:0 0 8px var(--accent2);left:0;}
+
+  .clock{font-variant-numeric:tabular-nums;font-size:.85rem;color:var(--dim);min-width:90px;text-align:right;}
+
+  /* Bank / stem selector */
+  .banks{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;}
+  .bank{
+    border:1px solid var(--edge);border-radius:10px;padding:10px 8px;text-align:center;
+    background:var(--panel2);position:relative;overflow:hidden;transition:.15s;
+  }
+  .bank .name{font-weight:800;font-size:.8rem;letter-spacing:1px;}
+  .bank .role{font-size:.62rem;color:var(--dim);text-transform:uppercase;letter-spacing:1px;}
+  .bank .mute{position:absolute;top:6px;right:6px;font-size:.6rem;padding:2px 6px;border-radius:8px;
+    border:1px solid var(--edge);color:var(--dim);background:#0e0f13;}
+  .bank.active{border-color:var(--stem-color, var(--accent));box-shadow:0 0 0 1px var(--stem-color,var(--accent)) inset,0 0 16px -4px var(--stem-color,var(--accent));}
+  .bank.muted{opacity:.4;}
+  .bank[data-stem="vocals"]{--stem-color:var(--vocals);}
+  .bank[data-stem="drums"]{--stem-color:var(--drums);}
+  .bank[data-stem="bass"]{--stem-color:var(--bass);}
+  .bank[data-stem="other"]{--stem-color:var(--other);}
+  .bank .bar{height:3px;border-radius:2px;background:var(--stem-color,var(--accent));margin-top:6px;opacity:.85;}
+
+  /* Pad grid */
+  .padgrid{
+    display:grid;grid-template-columns:repeat(4,1fr);gap:10px;
+  }
+  .pad{
+    aspect-ratio:1/0.82;
+    border-radius:12px;
+    border:1px solid var(--edge);
+    background:linear-gradient(160deg,#22262f,#181a20);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:2px;position:relative;
+    box-shadow:0 4px 0 #0a0b0d, inset 0 1px 0 rgba(255,255,255,.05);
+    transition:transform .05s, box-shadow .05s, background .1s;
+    color:var(--text);
+  }
+  .pad .key{position:absolute;top:6px;left:8px;font-size:.62rem;color:var(--dim);font-weight:700;}
+  .pad .idx{font-size:.9rem;font-weight:800;opacity:.85;}
+  .pad .t{font-size:.6rem;color:var(--dim);font-variant-numeric:tabular-nums;}
+  .pad.active{
+    transform:translateY(3px);
+    box-shadow:0 1px 0 #0a0b0d, inset 0 1px 0 rgba(255,255,255,.05);
+    background:linear-gradient(160deg,var(--stem-glow,var(--accent)),#181a20 85%);
+  }
+  .pad.active .idx, .pad.active .t{color:#0a0b0d;}
+  .padgrid[data-stem="vocals"] .pad{--stem-glow:var(--vocals);}
+  .padgrid[data-stem="drums"] .pad{--stem-glow:var(--drums);}
+  .padgrid[data-stem="bass"] .pad{--stem-glow:var(--bass);}
+  .padgrid[data-stem="other"] .pad{--stem-glow:var(--other);}
+
+  footer{margin-top:16px;text-align:center;color:var(--dim);font-size:.72rem;line-height:1.6;}
+  footer a{color:var(--accent2);text-decoration:none;}
+
+  .hint{font-size:.72rem;color:var(--dim);margin:10px 2px 0;text-align:center;}
+  .loader{
+    position:fixed;inset:0;background:#0b0c0f;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:14px;z-index:50;transition:opacity .4s;
+  }
+  .loader .spin{width:46px;height:46px;border-radius:50%;border:3px solid #2a2e37;border-top-color:var(--accent);animation:spin 1s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .loader .msg{color:var(--dim);font-size:.85rem;}
+  .loader.hidden{opacity:0;pointer-events:none;}
+
+  @media (max-width:520px){
+    .padgrid{gap:7px;}
+    .banks{grid-template-columns:repeat(2,1fr);}
+    :root{font-size:14px;}
+  }
+</style>
+</head>
+<body>
+
+<div class="loader" id="loader">
+  <div class="spin"></div>
+  <div class="msg" id="loaderMsg">Loading stems…</div>
+</div>
+
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <div class="title">B4SS4EV4R MPC</div>
+      <div class="sub">AI-split sampler · vocals / drums / bass / other</div>
+    </div>
+    <div class="badge">tap pads · hold to sustain · 1-4 switch banks</div>
+  </header>
+
+  <div class="machine">
+    <div class="transport">
+      <button class="tbtn" id="playFull">▶ Full Mix</button>
+      <button class="tbtn" id="stopAll">■ Stop</button>
+      <div class="timeline" id="timeline">
+        <canvas id="waveCanvas"></canvas>
+        <div class="playhead" id="playhead"></div>
+      </div>
+      <div class="clock" id="clock">0:00 / 0:00</div>
+    </div>
+
+    <div class="banks" id="banks"></div>
+
+    <div class="padgrid" id="padgrid"></div>
+
+    <div class="hint">Pads slice the current stem across the song's timeline — press to trigger, release to cut. Toggle a bank's ⓜ to mute it in the Full Mix playback.</div>
+  </div>
+
+  <footer>
+    Stems separated with <a href="https://github.com/facebookresearch/demucs" target="_blank" rel="noopener">Demucs</a> (htdemucs) from the uploaded track, built for GitHub Pages — no server, all in the browser.
+  </footer>
+</div>
+
+<script>
+(function(){
+  const STEMS = [
+    { key:'vocals', label:'VOCALS', file:'samples/vocals.mp3' },
+    { key:'drums',  label:'DRUMS',  file:'samples/drums.mp3'  },
+    { key:'bass',   label:'BASS',   file:'samples/bass.mp3'   },
+    { key:'other',  label:'OTHER',  file:'samples/other.mp3'  },
+  ];
+  const PADS_PER_BANK = 16;
+  const KEYMAP = ['1','2','3','4','q','w','e','r','a','s','d','f','z','x','c','v'];
+  const BANK_KEYS = ['1','2','3','4']; // used with Alt/Tab-ish switching via number row when not over a pad key... see below
+
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const buffers = {};      // key -> AudioBuffer
+  const muted   = {};      // key -> bool
+  const gains   = {};      // key -> GainNode (for full-mix mute)
+  let activeBank = 'vocals';
+  let fullSources = [];    // playing sources for full-mix
+  let fullStartCtxTime = 0, fullStartOffset = 0, fullPlaying = false;
+  let rafId = null;
+
+  const loader = document.getElementById('loader');
+  const loaderMsg = document.getElementById('loaderMsg');
+  const banksEl = document.getElementById('banks');
+  const padgridEl = document.getElementById('padgrid');
+  const playFullBtn = document.getElementById('playFull');
+  const stopAllBtn = document.getElementById('stopAll');
+  const clockEl = document.getElementById('clock');
+  const playheadEl = document.getElementById('playhead');
+  const timelineEl = document.getElementById('timeline');
+  const waveCanvas = document.getElementById('waveCanvas');
+
+  function fmt(t){
+    if(!isFinite(t) || t<0) t=0;
+    const m = Math.floor(t/60), s = Math.floor(t%60);
+    return m+':'+String(s).padStart(2,'0');
+  }
+
+  async function loadStem(stem){
+    loaderMsg.textContent = 'Loading ' + stem.label.toLowerCase() + '…';
+    const res = await fetch(stem.file);
+    const arr = await res.arrayBuffer();
+    const buf = await ctx.decodeAudioData(arr);
+    buffers[stem.key] = buf;
+    muted[stem.key] = false;
+  }
+
+  function trackDuration(){
+    let d = 0;
+    for(const k in buffers) d = Math.max(d, buffers[k].duration);
+    return d;
+  }
+
+  function buildBanks(){
+    banksEl.innerHTML = '';
+    STEMS.forEach((s,i)=>{
+      const el = document.createElement('div');
+      el.className = 'bank' + (s.key===activeBank ? ' active' : '');
+      el.dataset.stem = s.key;
+      el.innerHTML = `
+        <button class="mute" data-key="${s.key}" title="Mute in full mix">M</button>
+        <div class="name">${s.label}</div>
+        <div class="role">bank ${i+1}</div>
+        <div class="bar"></div>
+      `;
+      el.addEventListener('click', (e)=>{
+        if(e.target.classList.contains('mute')){
+          toggleMute(s.key);
+          e.stopPropagation();
+          return;
+        }
+        setActiveBank(s.key);
+      });
+      banksEl.appendChild(el);
+    });
+  }
+
+  function toggleMute(key){
+    muted[key] = !muted[key];
+    if(gains[key]) gains[key].gain.value = muted[key] ? 0 : 1;
+    document.querySelectorAll('.bank').forEach(b=>{
+      if(b.dataset.stem===key) b.classList.toggle('muted', muted[key]);
+    });
+  }
+
+  function setActiveBank(key){
+    activeBank = key;
+    document.querySelectorAll('.bank').forEach(b=>{
+      b.classList.toggle('active', b.dataset.stem===key);
+    });
+    buildPads();
+  }
+
+  function buildPads(){
+    padgridEl.dataset.stem = activeBank;
+    padgridEl.innerHTML = '';
+    const buf = buffers[activeBank];
+    const dur = buf ? buf.duration : 0;
+    const slice = dur / PADS_PER_BANK;
+    for(let i=0;i<PADS_PER_BANK;i++){
+      const pad = document.createElement('div');
+      pad.className = 'pad';
+      pad.dataset.index = i;
+      const start = i*slice;
+      pad.innerHTML = `
+        <div class="key">${KEYMAP[i].toUpperCase()}</div>
+        <div class="idx">${i+1}</div>
+        <div class="t">${fmt(start)}</div>
+      `;
+      pad.addEventListener('pointerdown', (e)=>{
+        e.preventDefault();
+        triggerPad(activeBank, i, slice, pad);
+      });
+      pad.addEventListener('pointerup', ()=> releasePad(pad));
+      pad.addEventListener('pointerleave', ()=> releasePad(pad));
+      padgridEl.appendChild(pad);
+    }
+  }
+
+  const padSources = {}; // dom element -> {source, gain}
+
+  function triggerPad(stemKey, index, slice, padEl){
+    const buf = buffers[stemKey];
+    if(!buf) return;
+    if(ctx.state === 'suspended') ctx.resume();
+    const start = index*slice;
+    const remain = buf.duration - start;
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const g = ctx.createGain();
+    g.gain.value = 1;
+    src.connect(g).connect(ctx.destination);
+    src.start(0, start, Math.min(slice, remain));
+    padSources[padEl] = { src, g };
+    padEl.classList.add('active');
+    src.onended = ()=>{ padEl.classList.remove('active'); delete padSources[padEl]; };
+  }
+
+  function releasePad(padEl){
+    const entry = padSources[padEl];
+    if(!entry) return;
+    const now = ctx.currentTime;
+    try{
+      entry.g.gain.cancelScheduledValues(now);
+      entry.g.gain.setValueAtTime(entry.g.gain.value, now);
+      entry.g.gain.linearRampToValueAtTime(0.0001, now + 0.04);
+      entry.src.stop(now + 0.05);
+    }catch(err){}
+    padEl.classList.remove('active');
+    delete padSources[padEl];
+  }
+
+  // ---- Full mix playback (all 4 stems synced) ----
+  function stopFull(){
+    fullSources.forEach(s=>{ try{ s.stop(); }catch(e){} });
+    fullSources = [];
+    fullPlaying = false;
+    playFullBtn.textContent = '▶ Full Mix';
+    playFullBtn.classList.remove('on');
+    if(rafId) cancelAnimationFrame(rafId);
+  }
+
+  function playFull(fromOffset){
+    stopFull();
+    if(ctx.state === 'suspended') ctx.resume();
+    const offset = fromOffset != null ? fromOffset : 0;
+    fullStartCtxTime = ctx.currentTime;
+    fullStartOffset = offset;
+    STEMS.forEach(s=>{
+      const buf = buffers[s.key];
+      if(!buf) return;
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      let g = gains[s.key];
+      if(!g){ g = ctx.createGain(); gains[s.key] = g; }
+      g.gain.value = muted[s.key] ? 0 : 1;
+      src.connect(g).connect(ctx.destination);
+      const remain = buf.duration - offset;
+      if(remain > 0) src.start(0, offset, remain);
+      fullSources.push(src);
+    });
+    fullPlaying = true;
+    playFullBtn.textContent = '⏸ Pause';
+    playFullBtn.classList.add('on');
+    if(fullSources.length){
+      fullSources[0].onended = () => { if(fullPlaying) stopFull(); };
+    }
+    tick();
+  }
+
+  function currentFullTime(){
+    if(!fullPlaying) return fullStartOffset;
+    return fullStartOffset + (ctx.currentTime - fullStartCtxTime);
+  }
+
+  function tick(){
+    const dur = trackDuration();
+    const t = Math.min(currentFullTime(), dur);
+    clockEl.textContent = fmt(t) + ' / ' + fmt(dur);
+    const pct = dur ? (t/dur)*100 : 0;
+    playheadEl.style.left = pct + '%';
+    if(fullPlaying){
+      rafId = requestAnimationFrame(tick);
+      if(t >= dur - 0.05) stopFull();
+    }
+  }
+
+  playFullBtn.addEventListener('click', ()=>{
+    if(fullPlaying){
+      fullStartOffset = currentFullTime();
+      stopFull();
+    } else {
+      playFull(fullStartOffset);
+    }
+  });
+  stopAllBtn.addEventListener('click', ()=>{
+    fullStartOffset = 0;
+    stopFull();
+    tick();
+  });
+
+  timelineEl.addEventListener('click', (e)=>{
+    const rect = timelineEl.getBoundingClientRect();
+    const pct = (e.clientX - rect.left) / rect.width;
+    const dur = trackDuration();
+    const t = Math.max(0, Math.min(dur, pct*dur));
+    fullStartOffset = t;
+    if(fullPlaying) playFull(t); else tick();
+  });
+
+  function drawWave(){
+    const buf = buffers['drums'] || buffers[STEMS[0].key];
+    if(!buf) return;
+    const dpr = window.devicePixelRatio || 1;
+    const w = waveCanvas.clientWidth * dpr, h = waveCanvas.clientHeight * dpr;
+    waveCanvas.width = w; waveCanvas.height = h;
+    const c = waveCanvas.getContext('2d');
+    c.clearRect(0,0,w,h);
+    const data = buf.getChannelData(0);
+    const step = Math.ceil(data.length / w);
+    c.fillStyle = 'rgba(255,93,59,0.55)';
+    for(let x=0;x<w;x++){
+      let min=1,max=-1;
+      const start = x*step;
+      for(let j=0;j<step;j++){
+        const v = data[start+j] || 0;
+        if(v<min) min=v; if(v>max) max=v;
+      }
+      const y1 = (1+min)*0.5*h, y2=(1+max)*0.5*h;
+      c.fillRect(x, Math.min(y1,y2), 1, Math.max(1,Math.abs(y2-y1)));
+    }
+  }
+
+  // Keyboard control
+  window.addEventListener('keydown', (e)=>{
+    if(e.repeat) return;
+    const k = e.key.toLowerCase();
+    if(['1','2','3','4'].includes(k) && !padSources.length){
+      // number keys switch banks unless a matching pad-key combo intended;
+      // to avoid clashing with pad row 1 keys (1,2,3,4 are also pads), use Shift+number for bank switch
+    }
+    if(e.shiftKey && ['1','2','3','4'].includes(k)){
+      setActiveBank(STEMS[parseInt(k,10)-1].key);
+      return;
+    }
+    if(k === ' '){
+      e.preventDefault();
+      if(fullPlaying){ fullStartOffset = currentFullTime(); stopFull(); }
+      else playFull(fullStartOffset);
+      return;
+    }
+    const idx = KEYMAP.indexOf(k);
+    if(idx>-1){
+      const padEl = padgridEl.children[idx];
+      if(padEl && !padEl.classList.contains('active')){
+        const buf = buffers[activeBank];
+        const slice = buf ? buf.duration/PADS_PER_BANK : 0;
+        triggerPad(activeBank, idx, slice, padEl);
+      }
+    }
+  });
+  window.addEventListener('keyup', (e)=>{
+    const k = e.key.toLowerCase();
+    const idx = KEYMAP.indexOf(k);
+    if(idx>-1){
+      const padEl = padgridEl.children[idx];
+      if(padEl) releasePad(padEl);
+    }
+  });
+
+  async function init(){
+    buildBanks();
+    try{
+      for(const s of STEMS){ await loadStem(s); }
+    }catch(err){
+      loaderMsg.textContent = 'Failed to load audio: ' + err.message;
+      return;
+    }
+    setActiveBank('vocals');
+    drawWave();
+    tick();
+    loader.classList.add('hidden');
+    setTimeout(()=> loader.style.display='none', 450);
+  }
+
+  window.addEventListener('resize', drawWave);
+  init();
+})();
+</script>
+</body>
+</html>

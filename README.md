@@ -39,5 +39,18 @@ For a more hands-off version **on Facebook's own page**, there's `bookmarklet.tx
 JarvisWeb/
 ├── index.html                    ← the whole voice assistant, just open it
 ├── marketplace-bookmarklet.js    ← readable source + install instructions
-└── bookmarklet.txt               ← ready-to-paste javascript: bookmarklet
+├── bookmarklet.txt               ← ready-to-paste javascript: bookmarklet
+└── mpc/                          ← B4SS4EV4R MPC sampler (see below)
 ```
+
+## B4SS4EV4R MPC — song-specific sampler
+
+**[Open the MPC](./mpc/)** (or on GitHub Pages: `mpc/`)
+
+A browser-based MPC pad sampler built specifically for `B4ss4ev4r_Freestyle.mp3`. The track was split into **vocals / drums / bass / other** using [Demucs](https://github.com/facebookresearch/demucs) (htdemucs model), and each stem is chopped into a 4×4 pad bank you can trigger live, entirely client-side with the Web Audio API (no server, no build step).
+
+- 4 banks (one per stem) × 16 pads, each pad a timeline slice of that stem
+- Press-and-hold pads to trigger/cut like a real sampler; keyboard shortcuts `1234 qwer asdf zxcv`
+- `Shift+1..4` switches banks, `Space` plays/pauses the synced full mix
+- Per-stem mute (ⓜ) while the full mix plays, click-to-seek timeline with waveform
+- Static files only — audio stems live in `mpc/samples/`
