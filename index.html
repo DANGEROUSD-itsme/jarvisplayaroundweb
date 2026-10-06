@@ -278,25 +278,46 @@ function startListening() {
   recognition.interimResults = true;
   recognition.lang = 'en-US';
 
+  let commandDebounce = null;
+  let lastHandledResultIndex = -1;
+
   recognition.onresult = (event) => {
-    const last = event.results[event.results.length - 1];
+    const lastIdx = event.results.length - 1;
+    const last = event.results[lastIdx];
     const text = last[0].transcript.trim();
     const lower = text.toLowerCase();
     const idx = lower.indexOf('jarvis');
 
-    if (!last.isFinal) {
-      // Show live transcript so it's obvious the mic is actually picking things up.
-      heardEl.textContent = idx === -1 ? `(listening) ${text}` : `You: ${text}`;
+    if (idx === -1) {
+      heardEl.textContent = last.isFinal
+        ? `Heard: "${text}" — say "Jarvis" first so I know that's for me.`
+        : `(listening) ${text}`;
+      if (commandDebounce) { clearTimeout(commandDebounce); commandDebounce = null; }
       return;
     }
 
-    if (idx === -1) {
-      heardEl.textContent = `Heard: "${text}" — say "Jarvis" first so I know that's for me.`;
+    heardEl.textContent = `You: ${text}`;
+    const command = text.slice(idx + 6).replace(/^[,.\s-]+/, '').trim();
+    if (command.length === 0) {
+      if (commandDebounce) { clearTimeout(commandDebounce); commandDebounce = null; }
       return;
     }
-    const command = text.slice(idx + 6).replace(/^[,.\s-]+/, '').trim();
-    if (command.length === 0) return;
-    handleCommand(command);
+
+    // Some browsers (e.g. Opera) rarely fire a "final" result in continuous mode even
+    // though interim transcripts keep arriving — so don't gate on last.isFinal alone.
+    // Fire on final immediately, or after a short pause in interim updates.
+    if (commandDebounce) clearTimeout(commandDebounce);
+    const fire = () => {
+      commandDebounce = null;
+      if (lastIdx === lastHandledResultIndex) return; // already sent for this segment (debounce or a prior final)
+      lastHandledResultIndex = lastIdx;
+      handleCommand(command);
+    };
+    if (last.isFinal) {
+      fire();
+    } else {
+      commandDebounce = setTimeout(fire, 1200);
+    }
   };
 
   recognition.onerror = (e) => {
